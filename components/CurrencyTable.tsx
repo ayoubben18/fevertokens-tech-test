@@ -12,12 +12,15 @@ import {
 import useSearchStore from "@/stores/useSearchStore";
 import { CryptoData } from "@/types/currencies";
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { useDebounce } from "use-debounce";
 import { Button } from "./ui/button";
-import { LucideFastForward, MoveLeft, MoveRight } from "lucide-react";
+import { MoveLeft, MoveRight } from "lucide-react";
+import { Skeleton } from "./ui/skeleton";
+import { fetchCurrencies } from "@/app/actions";
+import { Input } from "./ui/input";
+import Link from "next/link";
 
 type Props = {};
 
@@ -27,39 +30,28 @@ const options = {
 
 const CurrencyTable = (props: Props) => {
   const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(12);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [currencies, setCurrencies] = useState<CryptoData[]>();
   const { searchTerm } = useSearchStore();
   const [isPending, startTransition] = useTransition();
   const [debouncedTerm] = useDebounce(searchTerm, 1000);
 
-  const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${rowsPerPage}&page=${page}&sparkline=false&locale=en`;
-  const searchUrl = `https://api.coingecko.com/api/v3/search?query=${debouncedTerm}`;
   const getCurrencies = async () => {
-    startTransition(async () => {
-      try {
-        let data: CryptoData[];
-        if (debouncedTerm.length >= 3) {
-          console.log(debouncedTerm);
-
-          const response = await fetch(searchUrl, { cache: "no-store" });
-          if (!response.ok) {
-            throw new Error("Failed to fetch currencies");
+    startTransition(() => {
+      fetchCurrencies(page, rowsPerPage, debouncedTerm)
+        .then((data) => {
+          if (!data) {
+            toast.error("Failed to fetch currencies");
+            return;
           }
-          const body = await response.json();
-          data = body?.coins;
-        } else {
-          const response = await fetch(url, { cache: "no-store" });
-          if (!response.ok) {
-            throw new Error("Failed to fetch currencies");
+          setCurrencies(data);
+        })
+        .catch((error) => {
+          if (error) {
+            console.error(error);
+            toast.error("Failed to fetch currencies");
           }
-          data = await response.json();
-        }
-
-        setCurrencies(data);
-      } catch (error) {
-        toast.error("Failed to fetch currencies");
-      }
+        });
     });
   };
 
@@ -68,7 +60,7 @@ const CurrencyTable = (props: Props) => {
   }, [page, rowsPerPage, debouncedTerm]);
 
   useEffect(() => {
-    setPage(0);
+    setPage(1);
     setCurrencies([]);
   }, [debouncedTerm]);
 
@@ -85,44 +77,82 @@ const CurrencyTable = (props: Props) => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {isPending ? (
-            <h1>Loading...</h1>
-          ) : (
-            currencies?.map((c, index) => (
-              // <Link href={`/coins/${c.id}`}>
-              <TableRow key={index}>
-                <TableCell className="font-medium">{index}</TableCell>
-                <TableCell>{c.name}</TableCell>
-                <TableCell>
-                  <Image
-                    priority
-                    alt="currency image"
-                    width={20}
-                    height={20}
-                    src={c.image || c.thumb}
-                  />
-                </TableCell>
-                <TableCell className="text-right">{c.symbol}</TableCell>
-              </TableRow>
-              // </Link>
-            ))
-          )}
+          {isPending
+            ? // an array with the length of perpage
+              Array.from({ length: rowsPerPage }).map((_, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    <Skeleton className="w-6 h-6 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="w-20 h-6 rounded-md" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="w-20 h-6 rounded-md" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="w-20 h-6 rounded-md" />
+                  </TableCell>
+                </TableRow>
+              ))
+            : currencies?.map((c, index) => (
+                <TableRow key={index}>
+                  <Link href={`/coins/${c.id}`}>
+                    <TableCell className="font-medium">
+                      {index + 1 + (page - 1) * rowsPerPage}
+                    </TableCell>
+                  </Link>
+                  <TableCell>
+                    <Link href={`/coins/${c.id}`}>{c.name}</Link>
+                  </TableCell>
+                  <TableCell>
+                    <Link href={`/coins/${c.id}`}>
+                      {" "}
+                      <Image
+                        priority
+                        alt="currency image"
+                        width={20}
+                        height={20}
+                        src={c.image || c.thumb}
+                      />
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Link href={`/coins/${c.id}`}>{c.symbol}</Link>
+                  </TableCell>
+                </TableRow>
+                //
+              ))}
         </TableBody>
       </Table>
-      <div className=" flex justify-between">
-        <Button
-          className=" flex gap-2"
-          disabled={page === 1}
-          onClick={() => setPage((prev) => prev - 1)}
-        >
-          <MoveLeft className=" w-4 h-4" /> Previous
-        </Button>
-        <Button
-          className=" flex gap-2"
-          onClick={() => setPage((prev) => prev + 1)}
-        >
-          Next <MoveRight className=" w-4 h-4" />
-        </Button>
+      <div className=" flex flex-col items-center gap-6">
+        <div className=" flex justify-between gap-10">
+          <Button
+            className=" flex gap-2"
+            disabled={page === 1}
+            onClick={() => setPage((prev) => prev - 1)}
+          >
+            <MoveLeft className=" w-4 h-4" /> Previous
+          </Button>
+          <Input
+            type="number"
+            defaultValue={rowsPerPage}
+            onChange={
+              // set the items per page
+              (e) =>
+                setRowsPerPage(
+                  Number(e.target.value) > 0 ? Number(e.target.value) : 1
+                )
+            }
+          />
+          <Button
+            className=" flex gap-2"
+            onClick={() => setPage((prev) => prev + 1)}
+          >
+            Next <MoveRight className=" w-4 h-4" />
+          </Button>
+        </div>
+        <h1 className=" font-bold">page : {page}</h1>
       </div>
     </div>
   );

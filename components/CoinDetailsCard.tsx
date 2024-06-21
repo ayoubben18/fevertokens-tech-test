@@ -48,6 +48,7 @@ const CoinDetailsCard = ({ coin }: Props) => {
                   : "text-red-500"
               )}
             >
+              {coin.market_data.price_change_percentage_24h > 0 && "+"}
               {coin.market_data.price_change_percentage_24h.toFixed(1)}%
             </div>
           </div>

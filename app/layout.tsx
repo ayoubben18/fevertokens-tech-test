@@ -4,6 +4,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { Toaster } from "sonner";
+import NavBar from "@/components/NavBar";
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -29,7 +30,8 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Toaster position="top-center" richColors />
+          <Toaster position="top-right" richColors />
+          <NavBar />
           {children}
         </ThemeProvider>
       </body>
