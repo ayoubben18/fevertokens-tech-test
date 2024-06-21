@@ -11,6 +11,12 @@ const fontSans = FontSans({
   variable: "--font-sans",
 });
 
+// metadata
+export const metadata: Metadata = {
+  title: "Crypto Tracker",
+  description: "Track the latest cryptocurrency prices",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
