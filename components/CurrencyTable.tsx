@@ -62,7 +62,7 @@ const CurrencyTable = () => {
     queryClient.invalidateQueries({
       queryKey: ["currencies"],
     });
-  }, [debouncedTerm]);
+  }, [debouncedTerm, queryClient]);
 
   return (
     <div>
