@@ -52,7 +52,7 @@ const CurrencyTable = () => {
         toast.error("Rate Limit Exceeded, Try again later");
       }
     },
-    initialData: [],
+    // initialData: [],
     retry: true,
   });
 
