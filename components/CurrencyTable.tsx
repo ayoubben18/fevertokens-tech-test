@@ -61,7 +61,7 @@ const CurrencyTable = () => {
   }, [debouncedTerm, queryClient]);
 
   return (
-    <div>
+    <div className=" w-full max-w-2xl">
       <Table>
         <TableCaption>Currencies</TableCaption>
         <TableHeader>
