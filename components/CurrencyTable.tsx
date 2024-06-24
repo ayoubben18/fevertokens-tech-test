@@ -1,27 +1,23 @@
 "use client";
+import { fetchCurrencies } from "@/app/actions";
 import {
   Table,
   TableBody,
   TableCaption,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import useSearchStore from "@/stores/useSearchStore";
-import { CryptoData } from "@/types/currencies";
-import Image from "next/image";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { MoveLeft, MoveRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useDebounce } from "use-debounce";
-import { Button } from "./ui/button";
-import { MoveLeft, MoveRight } from "lucide-react";
-import { Skeleton } from "./ui/skeleton";
-import { fetchCurrencies } from "@/app/actions";
-import { Input } from "./ui/input";
-import Link from "next/link";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import CurrencyRow from "./CurrencyRow";
 import TableSkeleton from "./TableSkeleton";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 
 const CurrencyTable = () => {
   const queryClient = useQueryClient();
@@ -82,32 +78,11 @@ const CurrencyTable = () => {
             <TableSkeleton rowsPerPage={rowsPerPage} />
           ) : (
             data?.map((c, index) => (
-              <TableRow key={index}>
-                <Link href={`/coins/${c.id}`}>
-                  <TableCell className="font-medium">
-                    {index + 1 + (page - 1) * rowsPerPage}
-                  </TableCell>
-                </Link>
-                <TableCell>
-                  <Link href={`/coins/${c.id}`}>{c.name}</Link>
-                </TableCell>
-                <TableCell>
-                  <Link href={`/coins/${c.id}`}>
-                    {" "}
-                    <Image
-                      priority
-                      alt="currency image"
-                      width={20}
-                      height={20}
-                      src={c.image || c.thumb}
-                    />
-                  </Link>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Link href={`/coins/${c.id}`}>{c.symbol}</Link>
-                </TableCell>
-              </TableRow>
-              //
+              <CurrencyRow
+                index={index + 1 + (page - 1) * rowsPerPage}
+                key={index}
+                coin={c}
+              />
             ))
           )}
         </TableBody>
