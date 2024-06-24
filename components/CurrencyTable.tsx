@@ -4,7 +4,6 @@ import {
   TableBody,
   TableCaption,
   TableCell,
-  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -12,7 +11,7 @@ import {
 import useSearchStore from "@/stores/useSearchStore";
 import { CryptoData } from "@/types/currencies";
 import Image from "next/image";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useDebounce } from "use-debounce";
 import { Button } from "./ui/button";
@@ -21,47 +20,48 @@ import { Skeleton } from "./ui/skeleton";
 import { fetchCurrencies } from "@/app/actions";
 import { Input } from "./ui/input";
 import Link from "next/link";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import TableSkeleton from "./TableSkeleton";
 
-type Props = {};
-
-const options = {
-  cache: "no-store",
-};
-
-const CurrencyTable = (props: Props) => {
+const CurrencyTable = () => {
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [currencies, setCurrencies] = useState<CryptoData[]>();
   const { searchTerm } = useSearchStore();
-  const [isPending, startTransition] = useTransition();
   const [debouncedTerm] = useDebounce(searchTerm, 1000);
 
-  const getCurrencies = async () => {
-    startTransition(() => {
-      fetchCurrencies(page, rowsPerPage, debouncedTerm)
-        .then((data) => {
-          if (!data) {
-            toast.error("Failed to fetch currencies");
-            return;
-          }
-          setCurrencies(data);
-        })
-        .catch((error) => {
-          if (error) {
-            console.error(error);
-            toast.error("Failed to fetch currencies");
-          }
-        });
-    });
-  };
-
-  useEffect(() => {
-    getCurrencies();
-  }, [page, rowsPerPage, debouncedTerm]);
+  const { data, isLoading } = useQuery({
+    queryKey: ["currencies", page, rowsPerPage, debouncedTerm],
+    queryFn: async () => {
+      try {
+        const currencies = await fetchCurrencies(
+          page,
+          rowsPerPage,
+          debouncedTerm
+        );
+        if (currencies?.length === 0 && debouncedTerm.length < 3) {
+          toast.info("No products left");
+        } else if (currencies?.length === 0 && debouncedTerm.length >= 3) {
+          toast.info(`No products found for "${debouncedTerm}"`);
+        } else {
+          return currencies;
+        }
+      } catch (error) {
+        console.log(error);
+        // when we exceed a rate limit on the free plan it returns a 429 status code
+        toast.error("Rate Limit Exceeded, Try again later");
+      }
+    },
+    initialData: [],
+    retry: true,
+  });
 
   useEffect(() => {
     setPage(1);
-    setCurrencies([]);
+    // invalidate the cache when the search term changes to get fresh data
+    queryClient.invalidateQueries({
+      queryKey: ["currencies"],
+    });
   }, [debouncedTerm]);
 
   return (
@@ -77,52 +77,39 @@ const CurrencyTable = (props: Props) => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {isPending
-            ? // an array with the length of perpage
-              Array.from({ length: rowsPerPage }).map((_, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <Skeleton className="w-6 h-6 rounded-full" />
+          {isLoading ? (
+            // an array with the length of perpage
+            <TableSkeleton rowsPerPage={rowsPerPage} />
+          ) : (
+            data?.map((c, index) => (
+              <TableRow key={index}>
+                <Link href={`/coins/${c.id}`}>
+                  <TableCell className="font-medium">
+                    {index + 1 + (page - 1) * rowsPerPage}
                   </TableCell>
-                  <TableCell>
-                    <Skeleton className="w-20 h-6 rounded-md" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="w-20 h-6 rounded-md" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="w-20 h-6 rounded-md" />
-                  </TableCell>
-                </TableRow>
-              ))
-            : currencies?.map((c, index) => (
-                <TableRow key={index}>
+                </Link>
+                <TableCell>
+                  <Link href={`/coins/${c.id}`}>{c.name}</Link>
+                </TableCell>
+                <TableCell>
                   <Link href={`/coins/${c.id}`}>
-                    <TableCell className="font-medium">
-                      {index + 1 + (page - 1) * rowsPerPage}
-                    </TableCell>
+                    {" "}
+                    <Image
+                      priority
+                      alt="currency image"
+                      width={20}
+                      height={20}
+                      src={c.image || c.thumb}
+                    />
                   </Link>
-                  <TableCell>
-                    <Link href={`/coins/${c.id}`}>{c.name}</Link>
-                  </TableCell>
-                  <TableCell>
-                    <Link href={`/coins/${c.id}`}>
-                      {" "}
-                      <Image
-                        priority
-                        alt="currency image"
-                        width={20}
-                        height={20}
-                        src={c.image || c.thumb}
-                      />
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Link href={`/coins/${c.id}`}>{c.symbol}</Link>
-                  </TableCell>
-                </TableRow>
-                //
-              ))}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Link href={`/coins/${c.id}`}>{c.symbol}</Link>
+                </TableCell>
+              </TableRow>
+              //
+            ))
+          )}
         </TableBody>
       </Table>
       <div className=" flex flex-col items-center gap-6">
@@ -147,6 +134,7 @@ const CurrencyTable = (props: Props) => {
           />
           <Button
             className=" flex gap-2"
+            disabled={data?.length === 0}
             onClick={() => setPage((prev) => prev + 1)}
           >
             Next <MoveRight className=" w-4 h-4" />

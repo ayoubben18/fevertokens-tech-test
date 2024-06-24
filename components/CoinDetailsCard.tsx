@@ -1,4 +1,3 @@
-import { CryptoData } from "@/types/currencies";
 import React from "react";
 import Image from "next/image";
 import { CoinById } from "@/types/typeById";

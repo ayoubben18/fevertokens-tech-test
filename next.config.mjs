@@ -3,7 +3,12 @@ const nextConfig = {
   // allow images
 
   images: {
-    domains: ["coin-images.coingecko.com"],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "coin-images.coingecko.com",
+      },
+    ],
   },
   reactStrictMode: false,
 };
